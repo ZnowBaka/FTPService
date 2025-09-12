@@ -69,7 +69,7 @@ public static void main(String[] args){
                 serverWriter.println(lengthToDownload);
                 sendFileExactly(downloadFile,rawOut,lengthToDownload);
                 System.out.println("File uploaded!");
-                break;
+                continue;
             }
 
             if ("/DOWNLOAD".equals(clientInput)) {
