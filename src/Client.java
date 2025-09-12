@@ -48,6 +48,29 @@ public static void main(String[] args){
                 System.out.println("Server: " + serverMessage);
             }
 
+            if ("/UPLOAD".equals(clientInput)) {
+                serverWriter.println("/UPLOAD");
+                System.out.println("Enter the file name: ");
+                String downloadFileName = clientReader.readLine();
+                if(downloadFileName == null) break;
+                serverWriter.println(downloadFileName);
+                File downloadFile = new File(CLIENTDIR + downloadFileName);
+                if(!downloadFile.exists() || !downloadFile.isFile()){
+                    System.out.println("File not found!");
+                    break;
+                }
+                System.out.println("File is ready to download, Procced: [yes/no]");
+                String accept = clientReader.readLine();
+                if(!"yes".equalsIgnoreCase(accept)){
+                    System.out.println("File not downloaded!");
+                    break;
+                }
+                long lengthToDownload = downloadFile.length();
+                serverWriter.println(lengthToDownload);
+                sendFileExactly(downloadFile,rawOut,lengthToDownload);
+                System.out.println("File uploaded!");
+                break;
+            }
 
             if ("/DOWNLOAD".equals(clientInput)) {
                 serverWriter.println("/DOWNLOAD");
@@ -108,6 +131,8 @@ public static void main(String[] args){
     catch (Exception e){
         e.printStackTrace();
     }
+
+
 }
     private static void receiveFileExactly(String fileName, InputStream rawIn, long length) throws IOException {
         File file = new File(CLIENTDIR, fileName);
@@ -122,6 +147,20 @@ public static void main(String[] args){
                 received += read;
             }
             fos.flush();
+        }
+    }
+    private static void sendFileExactly(File file, OutputStream out, long length) throws IOException {
+        try (FileInputStream fis = new FileInputStream(file)) {
+            byte[] buffer = new byte[8192];
+            long sent = 0;
+            while (sent < length) {
+                int toRead = (int) Math.min(buffer.length, length - sent);
+                int read = fis.read(buffer, 0, toRead);
+                if (read == -1) throw new EOFException("unexpected EOF while reading server file");
+                out.write(buffer, 0, read);
+                sent += read;
+            }
+            out.flush();
         }
     }
 }

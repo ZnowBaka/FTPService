@@ -15,7 +15,7 @@ public class ClientHandler extends Thread {
     public ClientHandler(Socket socket, String SERVERDIR) {
         super("Client-" + socket.getInetAddress());
         this.socket = socket;
-        this.SERVERDIR = SERVERDIR;
+        this.SERVERDIR = "serverDir/";
     }
     public void run(){
         try(
@@ -32,16 +32,34 @@ public class ClientHandler extends Thread {
                 switch(clientInput.toUpperCase()){
                     case ("/UPLOAD"):
 
+                        // Saves file name for later use and sends it to the server.
+                        // This operation sends a confirmation response, which we await.
+                        String fileName = reader.readLine();
+                        File file = new File(SERVERDIR + fileName);
+                        String fileLengthResponse = reader.readLine();
+                        if (fileLengthResponse == null) {
+                            System.out.println("Server: unexpected header: " + fileLengthResponse);
+                            continue;
+                        }
+
+                        long length = Long.parseLong(fileLengthResponse);
+
+                        // Await data from the server
+                        receiveFileExactly(file, rawinput, length);
+
+                        // To ensure that only the file data is being transferred, we have to wait for a response
+                        writer.println("File [" + fileName + "] has been downloaded");
+
                         break;
 
                     case ("/DOWNLOAD"):
                         writer.println("Enter the file name: ");
-                        String fileName = reader.readLine();
+                        String downloadFileName = reader.readLine();
 
-                        if(fileName == null) break;
+                        if(downloadFileName == null) break;
 
-                        File file = new File(SERVERDIR + fileName);
-                        if(!file.exists() || !file.isFile()){
+                        File downloadFile = new File(SERVERDIR + downloadFileName);
+                        if(!downloadFile.exists() || !downloadFile.isFile()){
                             writer.println("File not found!");
                             break;
                         }
@@ -51,11 +69,9 @@ public class ClientHandler extends Thread {
                             writer.println("File not downloaded!");
                             break;
                         }
-                        long length = file.length();
-                        writer.println(length);
-                        System.out.println("you got here");
-                        sendFileExactly(file,rawOutput,length);
-                        System.out.println("You got here too");
+                        long lengthToDownload = downloadFile.length();
+                        writer.println(lengthToDownload);
+                        sendFileExactly(downloadFile,rawOutput,lengthToDownload);
                         writer.println("File downloaded!");
                         break;
 
@@ -88,4 +104,19 @@ public class ClientHandler extends Thread {
             out.flush();
         }
     }
-}
+    private static void receiveFileExactly (File file, InputStream rawIn,long length) throws IOException {;
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            byte[] buffer = new byte[8192];
+            long received = 0;
+            while (received < length) {
+                int toRead = (int) Math.min(buffer.length, length - received);
+                int read = rawIn.read(buffer, 0, toRead);
+                if (read == -1) throw new EOFException("unexpected EOF while receiving file");
+                fos.write(buffer, 0, read);
+                received += read;
+            }
+            fos.flush();
+        }
+    }
+    }
+
