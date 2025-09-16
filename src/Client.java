@@ -68,6 +68,7 @@ public static void main(String[] args){
                 long lengthToDownload = downloadFile.length();
                 serverWriter.println(lengthToDownload);
                 sendFileExactly(downloadFile,rawOut,lengthToDownload);
+                System.out.println(serverReader.readLine());
                 System.out.println("File uploaded!");
                 continue;
             }
